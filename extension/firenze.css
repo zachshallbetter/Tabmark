@@ -56,13 +56,15 @@ button {
 
 .io {
 	float: right;
-	padding: 7px 5px 7px 5px !important;
-	margin-top: -7px;
+  padding: 0px 5px 0px 5px !important;
+	margin-left: 10px;
+/*	padding: 7px 5px 7px 5px !important;*/
 }
 
 .io:hover {
 	text-decoration: underline;
 }
+
 
 .ui-state-error {
 	padding: .5em;
@@ -76,8 +78,20 @@ button {
 	margin-bottom: .5em;
 }
 
+.ui-button {
+  border: 1px solid #CCCCCC !important;
+}
+
+.ui-button-text {
+  padding: 3px !important;
+}
+
 .ui-accordion-content {
 	padding: 1em 1em !important;
+}
+
+.ui-accordion-header {
+  overflow: auto;
 }
 
 .ui-icon {
