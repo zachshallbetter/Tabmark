@@ -135,7 +135,10 @@ function addTaskView(task) {
     nameAnchor.attr("href", "#");
     var nameSpan = $("<span></span>");
     nameSpan.html(unescape(task.name));
+    var editSpan = $("<span></span>");
+    editSpan.addClass("ui-icon ui-icon-pencil");
     nameAnchor.append(nameSpan);
+    nameSpan.append(editSpan);
     h3.append(nameAnchor);
     taskDiv.append(h3);
 
