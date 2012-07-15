@@ -87,8 +87,9 @@ button {
 
 .ui-icon-pencil {
 	position: static !important;
-
-	margin-top: 0 !important;
+	display: inline !important;
+	margin: 0 4px !important;
+	padding: 0px 8px;
 }
 
 a > img {
