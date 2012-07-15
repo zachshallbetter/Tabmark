@@ -6,7 +6,12 @@ function getTabsFromWindow(window) {
 			tabs[window.tabs[i].id] = new Object();
 			tabs[window.tabs[i].id].title = window.tabs[i].title;
 			tabs[window.tabs[i].id].url = window.tabs[i].url;
-			tabs[window.tabs[i].id].favicon = window.tabs[i].favIconUrl;
+			if (!window.tabs[i].favIconUrl
+			||  window.tabs[i].favIconUrl.indexOf('chrome://theme/') == 0) {
+				tabs[window.tabs[i].id].favicon = 'chrome://favicon/';
+			} else {
+				tabs[window.tabs[i].id].favicon = window.tabs[i].favIconUrl;
+			}
 		}
 	}
 	return tabs;
