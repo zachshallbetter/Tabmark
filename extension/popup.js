@@ -55,6 +55,54 @@ $(document).ready(function() {
     });
 });
 
+function editTitle(tasks, task, editSpan, taskContents) {
+    var nameSpan = editSpan.siblings('.name_text');
+    var curName = nameSpan.text();
+    var input = $("<input />");
+    var finish = function() {
+        var newName = input.val();
+        task.name = newName;
+        taskContents.attr('id', 'task_name_' + newName);
+        getUser(function(user) {
+            user.tasks = tasks;
+            setUser(user, false);
+        });
+        nameSpan.text(newName);
+        input.replaceWith(nameSpan);
+        editSpan.removeClass('ui-icon-check');
+        editSpan.addClass('ui-icon-pencil');
+        editSpan.unbind('click');
+        editSpan.click(function() {return editTitle(tasks, task, editSpan, taskContents)});
+        return false;
+    };
+    input.attr('type', 'text');
+    input.addClass('task-name-edit');
+    input.val(curName);
+    nameSpan.replaceWith(input);
+    editSpan.removeClass('ui-icon-pencil');
+    editSpan.addClass('ui-icon-check');
+    editSpan.unbind('click');
+    editSpan.click(finish);
+    input.click(function() {
+        return false;
+    }).keydown(function(e) {
+        var key = e.which;
+        if (key == 13) {
+            return finish();
+        } else if (key == 32) {
+            $(this).val($(this).val().trim() + " ");
+            return false;
+        }
+    }).blur(function() {
+        return finish();
+    }).autoGrowInput({
+        comfortZone: 5,
+        minWidth: 10,
+        maxWidth: 140
+    }).focus();
+    return false;
+}
+
 /**
  * Shows the error div in the popup with the specified message. This will disappear on the next click
  */
@@ -93,7 +141,7 @@ function saveList(event, ui) {
     getUser(function(user) {
         var oldTasks = user.tasks;
         var newTasks = [];
-        var list = $(".task_name > a > span");
+        var list = $(".task_name > a > span > .name_text");
         $.each(list, function(i, val) {
             newTasks.push(oldTasks.slice(indexOfTask(oldTasks, $(val).html()))[0]);
         });
@@ -110,7 +158,7 @@ function setTasksView(tasks) {
     $("#tasks").html("");
     $.each(tasks, function(i, task) {
         if (task)
-            addTaskView(task);
+            addTaskView(tasks, task);
     });
 }
 
@@ -118,7 +166,7 @@ function setTasksView(tasks) {
  * Adds an accordion element based on the specified task.
  */
 
-function addTaskView(task) {
+function addTaskView(tasks, task) {
     var tabs = task.tabs;
     var update = task.update;
     var taskDiv = $("<div></div>");
@@ -133,12 +181,17 @@ function addTaskView(task) {
     h3.addClass("task_name");
     var nameAnchor = $("<a></a>");
     nameAnchor.attr("href", "#");
-    var nameSpan = $("<span></span>");
-    nameSpan.html(unescape(task.name));
+    var nameTextSpan = $("<span></span>");
+    nameTextSpan.addClass("name_text");
+    nameTextSpan.text(unescape(task.name));
     var editSpan = $("<span></span>");
-    editSpan.addClass("ui-icon ui-icon-pencil");
-    nameAnchor.append(nameSpan);
+    editSpan.addClass("ui-icon ui-icon-pencil icon-title");
+    editSpan.unbind('click');
+    editSpan.click(function() { return editTitle(tasks, task, $(this), taskContents); });
+    var nameSpan = $("<span></span>");
+    nameSpan.append(nameTextSpan);
     nameSpan.append(editSpan);
+    nameAnchor.append(nameSpan);
     h3.append(nameAnchor);
     taskDiv.append(h3);
 
@@ -188,12 +241,10 @@ function addTaskView(task) {
         favicon.attr("src", tab.favicon);
         favicon.attr("width", "16px");
         favicon.attr("height", "16px");
+        a.append(favicon);
         if (tab.title.length > 35) {
-            a.append(favicon);
-            a.append(tab.title);
-            a.text(tab.title.substring(0, 35) + "...");
+            a.append(tab.title.substring(0, 35) + "...");
         } else {
-            a.append(favicon);
             a.append(tab.title);
         }
         li.append(a);
@@ -215,7 +266,7 @@ function addTaskView(task) {
 
     var label = $("<label></label>");
     var span = $("<span></span>");
-    span.addClass("ui-icon");
+    span.addClass("ui-icon icon-button");
     span.addClass(task.update? "ui-icon-check" : "ui-icon-radio-on");
     label.append(span);
     label.append("Update Live");

@@ -70,7 +70,7 @@ button {
 
 .io {
 	float: right;
-  padding: 0px 5px 0px 5px !important;
+    padding: 0px 5px 0px 5px !important;
 	margin-left: 7px;
 	text-transform: uppercase;
 	font-weight: normal;
@@ -110,16 +110,27 @@ button {
   font-weight: bold !important;
 }
 
-.ui-icon-check {
+.icon-button {
 	float: left;
 	margin-right: .3em;
 }
 
-.ui-icon-pencil {
+.icon-title {
 	position: static !important;
 	display: inline !important;
 	margin: 0 4px !important;
-	padding: 0px 8px;
+	padding: 1px 8px;
+}
+
+input.task-name-edit {
+	border: none;
+	margin: 0 !important;
+	outline: none;
+	font-family: Helvetica, Verdana, Arial, sans-serif;
+	font-size: 12px !important;
+	font-weight: bold;
+	line-height: 15px;
+	height: 15px;
 }
 
 a > img {
