@@ -175,7 +175,6 @@ function addTaskView(task) {
         });
     });
 
-    taskContents.append($("<strong>Tabs:<strong>"));
     // Add the list of tabs with the text showing the title and the title/href showing the url. 
     var list = $("<ul></ul>");
     list.attr("class", "tablist");
@@ -201,8 +200,6 @@ function addTaskView(task) {
         list.append(li);
     });
     taskContents.append(list);
-
-    taskContents.append($("<strong>Options:<strong>"));
 
     var optionsDiv = $("<div></div>");
     optionsDiv.addClass("optionsDiv");
