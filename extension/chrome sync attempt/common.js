@@ -1,3 +1,9 @@
+var CHANGE_TYPES = {
+	ADD_TASK: 1,
+	REMOVE_TASK: 2,
+	EDIT_TASK: 3
+};
+
 function getTabsFromWindow(window) {
 	var tabs = new Object();
 	var savePinned = localStorage["savePinned"];

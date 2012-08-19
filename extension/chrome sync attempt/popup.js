@@ -12,10 +12,7 @@
  * On document ready, load the tasks from localStorage and put them in the popup view. Set event handlers.
  */
 $(document).ready(function() {
-    getUser(function(user) {
-        LOGIN_URL = user.login;
-        LOGOUT_URL = user.logout;
-        var tasks = user.tasks;
+    getTasks(function(tasks) {
         if (tasks) {
             setTasksView(tasks);
         }
@@ -33,7 +30,7 @@ $(document).ready(function() {
 
         $("button").button();
 
-        if (!user.email || user.email == "default") {
+        /*if (!user.email || user.email == "default") {
             var link = $("<a></a>");
             link.attr("href", LOGIN_URL);
             link.attr("target", "_blank");
@@ -50,7 +47,7 @@ $(document).ready(function() {
             link.attr("target", "_blank");
             link.text("Log out");
             $("#username").append(link);
-        }
+        }*/
     });
 });
 
@@ -60,12 +57,10 @@ function editTitle(tasks, task, editSpan, taskContents) {
     var input = $("<input />");
     var finish = function() {
         var newName = input.val();
+        var oldName = task.name;
         task.name = newName;
         taskContents.attr('id', 'task_name_' + newName);
-        getUser(function(user) {
-            user.tasks = tasks;
-            setUser(user, false);
-        });
+        makeChange({type: CHANGE_TYPES.EDIT_TASK, taskName: oldName, newTaskName: newName});
         nameSpan.text(newName);
         input.replaceWith(nameSpan);
         editSpan.removeClass('ui-icon-check');
@@ -113,7 +108,7 @@ function showError(text) {
 }
 
 /**
- * Recreates the accordion and makes it sortable again. Re-jquery-ifies the buttons. This is necessary after most
+ * Recreates the accordion. Re-jquery-ifies the buttons. This is necessary after most
  * UI manipulations to keep things from breaking.
  */
 
@@ -123,30 +118,8 @@ function refreshAccordion() {
         collapsible: true,
         active: false,
         autoHeight: false
-    }).sortable({
-        axis: "y",
-        handle: "h3",
-        update: saveList
     });
     $("button").button();
-}
-
-/**
- * Persists the current list of tasks after an add/delete/reordering. Does not deal with the tabs themselves, just
- * modifies localStorage to reflect the current state of the UI.
- */
-
-function saveList(event, ui) {
-    getUser(function(user) {
-        var oldTasks = user.tasks;
-        var newTasks = [];
-        var list = $(".task_name > a > span > .name_text");
-        $.each(list, function(i, val) {
-            newTasks.push(oldTasks.slice(indexOfTask(oldTasks, $(val).html()))[0]);
-        });
-        user.tasks = newTasks;
-        setUser(user);
-    });
 }
 
 /**
@@ -194,27 +167,27 @@ function addTaskView(tasks, task) {
     h3.append(nameAnchor);
     taskDiv.append(h3);
 
-    var loadAnchor = $("<a></a>");
-    loadAnchor.addClass("io");
+    var saveAnchor = $("<a></a>");
+    saveAnchor.addClass("io");
 
-    loadAnchor.html("Save");
-    loadAnchor.click(function() {
+    saveAnchor.html("Save");
+    saveAnchor.click(function() {
         saveTask(task.name, false, true);
         return false;
     });
 
-    var saveAnchor = $("<a></a>");
-    saveAnchor.addClass("io");
+    var loadAnchor = $("<a></a>");
+    loadAnchor.addClass("io");
 
     // otherwise, show "Load"
-    saveAnchor.html("Load");
-    saveAnchor.click(function() {
+    loadAnchor.html("Load");
+    loadAnchor.click(function() {
         loadTask(task);
         return false;
     });
 
-    nameAnchor.append(loadAnchor);
     nameAnchor.append(saveAnchor);
+    nameAnchor.append(loadAnchor);
 
     chrome.windows.getCurrent(null, function(window) {
         // display the element differently depending on if the current task is active in the current window.
@@ -255,10 +228,7 @@ function addTaskView(tasks, task) {
         input.addClass('task-name-edit edit-input-centered');
         description.html(input);
         var finish = function() {
-            getUser(function(user) {
-                user.tasks[indexOfTask(user.tasks, task.name)].description = input.val();
-                setUser(user, false);
-            });
+            makeChange({type: CHANGE_TYPES.EDIT_TASK, taskName: name, newDescription: input.val()})
             if (input.val()) {
                 description.text(input.val()); 
                 description.removeClass('no_description');
@@ -294,11 +264,11 @@ function addTaskView(tasks, task) {
         deleteIcon.click(function(event) {
             var button = $(this);
             button.parent().remove();
-            getUser(function(user) {
-                var objtask = user.tasks[indexOfTask(user.tasks, task.name)];
+            getTasks(function(tasks) {
+                var objtask = tasks[task.name];
                 var tab = getTab(objtask.tabs, button.siblings('a').attr('href'));
                 delete objtask.tabs[tab];
-                setUser(user);
+                makeChange({type: CHANGE_TYPES.EDIT_TASK, newTabs: objtask.tabs});
             });
         }).hover(function(event) {
             $(this).toggleClass('ui-icon-close');
@@ -375,16 +345,14 @@ function addTaskView(tasks, task) {
  */
 
 function removeTask(name) {
-    getUser(function(user) {
-        var index = indexOfTask(user.tasks, name);
-        user.tasks.splice(index, 1);
-        setUser(user);
-        var div = $("#task_name_" + name);
-        if (div.hasClass("active_task")) {
-            $("#auto_update").hide();
-        }
-        div.remove();
-        setTasksView(user.tasks);
+    makeChange({type: CHANGE_TYPES.REMOVE_TASK, taskName: name});
+    var div = $("#task_name_" + name);
+    if (div.hasClass("active_task")) {
+        $("#auto_update").hide();
+    }
+    div.remove();
+    getTasks(function(tasks) {
+        setTasksView(tasks);
     });
 }
 
@@ -403,7 +371,6 @@ function loadTask(task) {
         url: urls,
         focused: true
     }, function(window) {
-        saveTask();
         addToUpdater(window, task.name);
     });
 }
@@ -422,19 +389,16 @@ function setUpdate(label, checkbox) {
         $('#recording').attr('title', 'This task is active in this window and live syncing is disabled. Changes to your current tabs will not be saved automatically.');
         $('#recording').removeClass('ui-icon-red');
     }
-    getUser(function(user) {
-        user.tasks[indexOfTask(user.tasks, checkbox.val())].update = enabled;
-        label.children().children().removeClass("ui-icon-check, ui-icon-radio-on");
-        label.children().children().addClass(enabled? "ui-icon-check" : "ui-icon-radio-on");
-        setUser(user);
-    });
+    makeChange({type: CHANGE_VALUES.EDIT_TASK, taskName: checkbox.val()});
+
+    label.children().children().removeClass("ui-icon-check, ui-icon-radio-on");
+    label.children().children().addClass(enabled? "ui-icon-check" : "ui-icon-radio-on");
 }
 
 /**
  * Notifies background.js that the task is active so that it will update the persisted state if it
  * is supposed to.
  */
-
 function addToUpdater(window, name) {
     chrome.extension.sendRequest({
         type: "load_task",
@@ -447,17 +411,16 @@ function addToUpdater(window, name) {
  * Stub abstracts the request to the background page. Takes a callback: myFun(tasks), tasks will be
  * the array of tasks, equivalent to localStorage["tasks"]
  */
-function setUser(user, immediate) {
+function makeChange(change) {
     chrome.extension.sendRequest({
-        type: "set_user",
-        user: user,
-        immediate: immediate
+        type: "make_change",
+        change: change
     }, function() {});
 }
 
-function getUser(callback) {
+function getTasks(callback) {
     chrome.extension.sendRequest({
-        type: "get_user"
+        type: "get_tasks"
     }, function(response) {
         callback(response);
     });
@@ -480,18 +443,14 @@ function saveTask(name, isNew, immediate) {
         showError("Please enter a task name");
         return;
     }
-    getUser(function(user) {
-        if (!user.tasks) {
-            user.tasks = [];
-        }
+    if (isNew && indexOfTask(tasks, name) >= 0) {
+        showError("A task with that name already exists");
+        return;
+    } else {
+        $("#task_name").attr("value", "");
+    }
 
-        if (isNew && indexOfTask(tasks, name) >= 0) {
-            showError("A task with that name already exists");
-            return;
-        } else {
-            $("#task_name").attr("value", "");
-        }
-
+    getTasks(function(tasks) {
         chrome.windows.getCurrent({
             populate: true
         }, function(window) {
@@ -500,15 +459,16 @@ function saveTask(name, isNew, immediate) {
                 name: escape(name),
                 update: false,
                 description: ''
-            } : user.tasks[indexOfTask(user.tasks, name)];
+            } : tasks[indexOfTask(tasks, name)];
             task.tabs = tabs;
-            if (isNew) {
-                user.tasks.push(task);
+            tasks[task.name] = task;
+            if (isNew) {    
+                makeChange({type: CHANGE_TYPES.ADD_TASK, taskName: name, task: task});
                 addToUpdater(window, name);
+            } else {
+                makeChange({type: CHANGE_TYPES.EDIT_TASK, taskName: name, newTabs: tabs});
             }
-            setTasksView(user.tasks);
-            setUser(user, immediate);
-            //$("#tasks").accordion("option", "activate", 0);
+            setTasksView(tasks);
         });
     });
 }

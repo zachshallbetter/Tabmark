@@ -18,6 +18,7 @@ from google.appengine.ext import db
 from google.appengine.api import users
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
+import logging
 import datetime
 import time
 import json
@@ -44,7 +45,10 @@ class MainHandler(webapp.RequestHandler):
             return
         serverTime = time.mktime(user.lastUpdated.utctimetuple())
         response = {"email": user.email, "lastUpdated": serverTime}
-        localTime = float(self.request.get("time"))
+        localTime = 0
+        if self.request.get("time"):
+            localTime = float(self.request.get("time"))
+        logging.info('Server time: %d, Local time: %d' % (serverTime, localTime))
         if self.request.get("time") is not None and serverTime > localTime:
             response["tasks"] = user.tasks
         self.response.headers['Content-Type'] = 'application/json'

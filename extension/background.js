@@ -41,14 +41,15 @@ localStorage:
 var WEBSERVICE_URL = "http://tabtaskmanager.appspot.com";
 // var WEBSERVICE_URL = "http://localhost:8080";
 var LOGIN_URL; // = WEBSERVICE_URL + "/_ah/login?continue=" + WEBSERVICE_URL + "?user=true";
-var LOGOUT_URL; // = WEBSERVICE_URL + "/_ah/login?continue=" + WEBSERVICE_URL + "&action=logout";
-var CLOUD_INTERVAL = 1000 * 60 * 5;
+	var LOGOUT_URL; // = WEBSERVICE_URL + "/_ah/login?continue=" + WEBSERVICE_URL + "&action=logout";
+var CLOUD_INTERVAL = 1000 * 60 * 1;
 
 /*** GLOBALS ***/
 var activeTasks = new Object();
 var user;
 var tabs = new Array();
 var cloudTimer;
+var getTimer;
 var key;
 
 window.onload = function() {
@@ -81,6 +82,14 @@ chrome.extension.onRequest.addListener(function(request, sender, sendResponse) {
 	} else if (request.type == "logged_in") {
 		persistLocal();
 		loginAttempt();
+	} else if (request.type == "clear") {
+		localStorage.clear();
+		loginAttempt();
+	} else if (request.type == "reset") {
+		localStorage.clear();
+		user = {lastUpdated: 0, tasks: [], email: "default"};
+		persistLocal(true);
+		loginAttempt();
 	}
 });
 
@@ -96,6 +105,7 @@ function loginAttempt() {
 			} else
 				user = {lastUpdated: 0, tasks: [], email: data};
 			getUser();
+			getTimer = setInterval(getUser, CLOUD_INTERVAL);
 		},
 		error: function(data) {
 			key = SHA1("default");
@@ -103,7 +113,11 @@ function loginAttempt() {
 				user = {lastUpdated: 0, tasks: [], email: "default"};
 			} else {
 				user = $.parseJSON(localStorage["default"]);
-				user.tasks = $.parseJSON(sjcl.decrypt(key, user.tasks));
+				try {
+					user.tasks = $.parseJSON(sjcl.decrypt(key, user.tasks));
+				} catch (exception) {
+					user.tasks = [];
+				}
 			}
 		}
 	});
@@ -163,10 +177,16 @@ function deleteTabsFromTask(task) {
 // in --> in = keep same
 function getUser() {
 	$.get(WEBSERVICE_URL, {time: user.lastUpdated}, function(data) {
+		var oldUser = user;
 		if (data.tasks) {
 			console.log("from cloud");
-			user = data;	
-			user.tasks = $.parseJSON(sjcl.decrypt(key, user.tasks));
+			user = data;
+			try {
+				user.tasks = $.parseJSON(sjcl.decrypt(key, user.tasks));
+				saveUser();
+			} catch (exception) {
+				user = oldUser;
+			}
 		}
 	});
 }
@@ -180,14 +200,6 @@ function saveUser() {
 	user.tasks = oldTasks;
 }
 
-function persistLocal(immediate) {
-	saveUser();
-	if (immediate) {
-		persistUser();
-	} else if (!cloudTimer && user.email != "default") {
-		cloudTimer = setTimeout(persistUser, CLOUD_INTERVAL);
-	}
-}
 
 function persistUser() {
 	$.post(WEBSERVICE_URL, {

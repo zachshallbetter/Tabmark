@@ -1,7 +1,7 @@
 {
-	"name": "Tabmark-Dev",
+	"name": "Tabmark",
 	"version":  "1.0.0",
-	"description": "Organizes tabs by task, allowing the user to easily stop and resume tasks between browser sessions",
+	"description": "Group tabs by task or project name, so that you can easily stop and resume tasks across multiple computers.",
 	"permissions": [
 		"tabs", "http://tabtaskmanager.appspot.com/*", "chrome://favicon/"
 	],

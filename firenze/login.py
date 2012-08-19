@@ -23,7 +23,7 @@ import json
 class MainHandler(webapp.RequestHandler):
     def get(self):
         self.response.headers['Content-Type'] = 'application/json'
-        dict = {"login": users.create_login_url("/"), "logout": users.create_logout_url("/")}
+        dict = {"login": users.create_login_url("/logged_in"), "logout": users.create_logout_url("/logout")}
         self.response.out.write(json.JSONEncoder().encode(dict))
 
 app = webapp.WSGIApplication([('/login', MainHandler)],
