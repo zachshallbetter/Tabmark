@@ -14,8 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from google.appengine.ext import db
 from google.appengine.api import users
+from google.appengine.api import memcache
+from google.appengine.ext import db
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 import logging
@@ -32,26 +33,34 @@ class TTMUser(db.Model):
 
 class MainHandler(webapp.RequestHandler):
     def get(self):
+        self.response.headers['Content-Type'] = 'application/json'
         current_user = users.get_current_user()
         user_k = db.Key.from_path('TTMUser', current_user.user_id())
-        user = db.get(user_k)
-        if user is None:
-            user.tasks = []
+
+        localTime = 0
+        serverTime = memcache.get('%s-timestamp' % user_k.name())
+
+        if self.request.get('time') and serverTime:
+            localTime = float(self.request.get("time"))
+            logging.info('Server time: %d, Local time: %d' % (serverTime, localTime))
+            if serverTime <= localTime:
+                return
+
+        user = TTMUser.get_or_insert(user_k.name())
+
+        if not user.email:
+            user.tasks = ''
             user.email = current_user.email()
             user.put()
+
         if self.request.get("user"):
             self.response.headers['Content-Type'] = 'text/plain'
             self.response.out.write(user.email)
             return
+
         serverTime = time.mktime(user.lastUpdated.utctimetuple())
-        response = {"email": user.email, "lastUpdated": serverTime}
-        localTime = 0
-        if self.request.get("time"):
-            localTime = float(self.request.get("time"))
-        logging.info('Server time: %d, Local time: %d' % (serverTime, localTime))
-        if self.request.get("time") is not None and serverTime > localTime:
-            response["tasks"] = user.tasks
-        self.response.headers['Content-Type'] = 'application/json'
+        memcache.set('%s-timestamp' % user_k.name(), serverTime)
+        response = {"email": user.email, "lastUpdated": serverTime, "tasks": user.tasks}
         self.response.out.write(json.JSONEncoder().encode(response))
 
     def post(self):
@@ -63,7 +72,9 @@ class MainHandler(webapp.RequestHandler):
         if tasks is not None:
             user.tasks = tasks
         user.put()
-        self.response.out.write(time.mktime(user.lastUpdated.utctimetuple()))
+        put_time = time.mktime(user.lastUpdated.utctimetuple())
+        memcache.set('%s-timestamp' % user_k.name(), put_time)
+        self.response.out.write(put_time)
 
 
 app = webapp.WSGIApplication([('/', MainHandler)],

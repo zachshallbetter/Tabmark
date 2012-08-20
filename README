@@ -1,0 +1,10 @@
+This is the code for the Chrome extension Tabmark and the corresponding App Engine webservice.
+
+Tabmark is a Chrome extension that lets you bookmark groups of tabs by name, so that you can easily stop tasks and come back to them later.
+
+extension/ - The Chrome extension files
+firenze/ - The Python App Engine webservice for syncing tabs
+images/ - Promotional images for the app
+releases/ - Releases of the extension
+
+Please let me know if you have any issues or feature requests, and feel free to fork and play around with the code!
